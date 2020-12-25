@@ -27,17 +27,17 @@ FoEproxy.addHandler('ConversationService', 'getOverview', (data, postData) => {
 });
 
 // when a great building where the player has invested has been levelled
-FoEproxy.addHandler('BlueprintService','newReward', (data, postData) => {
+FoEproxy.addHandler('BlueprintService', 'newReward', (data, postData) => {
 
-    if ( data && data['responseData'] && data['responseData'] ) {
+    if (data && data['responseData'] && data['responseData']) {
         // save the number of returned FPs to show in the infoboard message
-        Info.ReturnFPPoints = ( data['responseData']['strategy_point_amount'] ) ? data.responseData.strategy_point_amount : 0;
+        Info.ReturnFPPoints = (data['responseData']['strategy_point_amount']) ? data.responseData.strategy_point_amount : 0;
 
         // If the Info.OtherPlayerService_newEventgreat_building_contribution ran earlier than this
         // the ReturnFPPoints was 0 so no message was posted. Therefore recreate the message using
         // the stored data (and the correct value of Info.ReturnFPPoints) and post it
-        if ( Info.ReturnFPMessageData ){
-            let bd = Info.OtherPlayerService_newEventgreat_building_contribution( Info.ReturnFPMessageData );
+        if (Info.ReturnFPMessageData) {
+            let bd = Info.OtherPlayerService_newEventgreat_building_contribution(Info.ReturnFPMessageData);
             Info.ReturnFPMessageData = null;
             Infoboard.PostMessage(bd);
         }
@@ -122,8 +122,8 @@ let Infoboard = {
             HTML.AddCssFile('infoboard');
 
         } else {
-			HTML.CloseOpenBox('BackgroundInfo');
-		}
+            HTML.CloseOpenBox('BackgroundInfo');
+        }
 
         let div = $('#BackgroundInfo'),
             h = [];
@@ -163,7 +163,7 @@ let Infoboard = {
         Infoboard.FilterInput();
         Infoboard.ResetBox();
 
-        $('#BackgroundInfo').on('click', '#infoboxTone', function() {
+        $('#BackgroundInfo').on('click', '#infoboxTone', function () {
 
             let disabled = $(this).hasClass('deactivated');
 
@@ -209,11 +209,67 @@ let Infoboard = {
 
         let bd = Info[s](Msg['responseData']);
 
+        let responseDataContetn = Msg['responseData'];
+        Infoboard.GetDataWhoIsInFight(responseDataContetn);
+
         if (!bd) {
             return;
         }
 
         Infoboard.PostMessage(bd);
+    },
+
+    GetDataWhoIsInFight: (inputs) => {
+        let battleGroundParticipants = GildFights.MapData['battlegroundParticipants'], prov;
+        if (inputs[0]['id'] === 0) {
+            prov = GildFights.ProvinceNames[0]['provinces'][0];
+        } else {
+            prov = GildFights.ProvinceNames[0]['provinces'].find(o => (o['id'] === inputs[0]['id']));
+        }
+        let conquestProgress = inputs[0]['conquestProgress'];
+        let provinceOwner = battleGroundParticipants.find(o => (o['participantId'] === inputs[0]['ownerId']));
+        for (let participantIndex in conquestProgress) {
+            let entry = conquestProgress[participantIndex]
+            let participant = battleGroundParticipants.find(o => (o['participantId'] === entry['participantId']));
+            let pName = "";
+            let pOwnerName = "";
+            if (participant !== undefined) {
+                pName = participant['clan'].name;
+            }
+            if (provinceOwner !== undefined) {
+                pOwnerName = provinceOwner['clan'].name;
+            }
+            entry['participantName'] = pName;
+            entry['ownerRegionName'] = pOwnerName;
+            entry['region'] = prov.name;
+            if (inputs[0]['lockedUntil'] !== undefined) {
+                entry['locked'] = true;
+                entry['lockedUnitl'] = moment.unix(inputs[0]['lockedUntil']).format('HH:mm:ss').toString();
+            }
+            Infoboard.SendMessage(entry);
+        }
+
+    },
+
+
+    SendMessage: (param) => {
+        var request = new XMLHttpRequest();
+        if (ExtWorld === "ro1") {
+            request.open("POST", "https://discordapp.com/api/webhooks/791988587150180357/2MOeL055Iu9NadPse3EO_E36dW8jDZ9xyIbafC6sBWSEW_jpy6kkfsYkY0oMpSz74qEE");
+        } else {
+            request.open("POST", "https://discordapp.com/api/webhooks/791832221627056168/GRi-t_ClvsFG1UsO03wAzEurZ6pVOEP3f-oLd5lup0L3ABtu_bYZcdwI9Hp9X8tSABGB");
+        }
+        request.setRequestHeader('Content-type', 'application/json');
+        let outputString = "";
+        if (param['lockedUnitl'] !== undefined) {
+            outputString = "\"" + param['region'] + "\"" + " region  captured by  \"" + param['ownerRegionName'] + "\",\" locked until: \"" + param['lockedUnitl'] + "\"";
+        } else {
+            outputString = "\"" + param['participantName'] + "\" hitting the region: \"" + param['region'] + "\",\"" + param['progress'] + "\", out of \"" + param['maxProgress'] + "\", owned by \"" + param['ownerRegionName'] + "\"";
+        }
+        let objectToSend = {tts: false, content: outputString};
+
+        let jsonParam = JSON.stringify(objectToSend);
+        request.send(jsonParam);
     },
 
     PostMessage: (bd) => {
@@ -247,10 +303,10 @@ let Infoboard = {
      *
      */
     FilterInput: () => {
-        $('#BackgroundInfo').on('change', '.filter-msg', function() {
+        $('#BackgroundInfo').on('change', '.filter-msg', function () {
             let active = [];
 
-            $('.filter-msg').each(function() {
+            $('.filter-msg').each(function () {
                 if ($(this).is(':checked')) {
                     active.push($(this).data('type'));
                     if (!Infoboard.SavedFilter.includes($(this).data('type')))
@@ -263,7 +319,7 @@ let Infoboard = {
 
             localStorage.setItem("infoboxSavedFilter", JSON.stringify(Infoboard.SavedFilter));
 
-            $('#BackgroundInfoTable tbody tr').each(function() {
+            $('#BackgroundInfoTable tbody tr').each(function () {
                 let tr = $(this);
                 type = tr.attr('class');
 
@@ -282,7 +338,7 @@ let Infoboard = {
      *
      */
     ResetBox: () => {
-        $('#BackgroundInfo').on('click', '.btn-reset-box', function() {
+        $('#BackgroundInfo').on('click', '.btn-reset-box', function () {
             $('#BackgroundInfoTable tbody').html('');
         });
     }
@@ -316,9 +372,9 @@ let Info = {
             type: 'Auktion',
             msg: HTML.i18nReplacer(
                 i18n('Boxes.Infobox.Messages.Auction'), {
-                'player': d['player']['name'],
-                'amount': HTML.Format(d['amount']),
-            }
+                    'player': d['player']['name'],
+                    'amount': HTML.Format(d['amount']),
+                }
             )
         };
     },
@@ -342,9 +398,9 @@ let Info = {
             if (d['attachment']['type'] === 'great_building') {
                 msg = HTML.i18nReplacer(
                     i18n('Boxes.Infobox.Messages.MsgBuilding'), {
-                    'building': MainParser.CityEntities[d['attachment']['cityEntityId']]['name'],
-                    'level': d['attachment']['level']
-                }
+                        'building': MainParser.CityEntities[d['attachment']['cityEntityId']]['name'],
+                        'level': d['attachment']['level']
+                    }
                 )
             }
             // Trade
@@ -375,8 +431,8 @@ let Info = {
      * @returns {{msg: string, type: string, class: string}}
      */
     GuildBattlegroundService_getProvinces: (d) => {
-
-        if (GildFights.SortedColors === null){
+// outputString = "\"" + param['region'] + "\"" + " region  captured by  \"" + param['ownerRegionName'] + "\",\" locked until: \"" + param['lockedUnitl'] + "\"";
+        if (GildFights.SortedColors === null) {
             GildFights.PrepareColors();
         }
 
@@ -394,10 +450,29 @@ let Info = {
         if (data['lockedUntil'] !== undefined) {
 
             let p = bP.find(o => (o['participantId'] === data['ownerId'])),
-				colors = GildFights.SortedColors.find(c => (c['id'] === data['ownerId']));
+                colors = GildFights.SortedColors.find(c => (c['id'] === data['ownerId']));
 
             let tc = colors['highlight'],
                 ts = colors['shadow'];
+            let pOwnerName = "";
+            let provOwner = bP.find(o => (o['participantId'] === data['ownerId']));
+            if (provOwner !== undefined) {
+                pOwnerName = provOwner['clan'].name;
+            }
+
+            let entry =new Object();
+            entry['region'] = prov.name;
+            entry['ownerRegionName'] = pOwnerName;
+            entry['lockedUnitl'] = moment.unix(data['lockedUntil']).format('HH:mm:ss').toString();
+            Infoboard.SendMessage(entry);
+
+            /* entry['participantName'] = pName;
+            entry['ownerRegionName'] = pOwnerName;
+            entry['region'] = prov.name;
+            if (inputs[0]['lockedUntil'] !== undefined) {
+                entry['locked'] = true;
+                entry['lockedUnitl'] = moment.unix(inputs[0]['lockedUntil']).format('HH:mm:ss').toString();
+            }*/
 
             return {
                 class: 'guildfighs',
@@ -423,7 +498,7 @@ let Info = {
 
             let d = data['conquestProgress'][i],
                 p = bP.find(o => (o['participantId'] === d['participantId'])),
-				colors = GildFights.SortedColors.find(c => (c['id'] === d['participantId']));
+                colors = GildFights.SortedColors.find(c => (c['id'] === d['participantId']));
 
             // es gibt mehrere Gilden in einer Provinz, aber eine kämpft gar nicht, überspringen
             if (Info.GildPoints[data['id']] !== undefined &&
@@ -463,7 +538,9 @@ let Info = {
     OtherPlayerService_newEventgreat_building_contribution: (d) => {
 
         let newFP = Info.ReturnFPPoints;
-        if ( d['rank'] >= 6 ){ newFP = 0; }
+        if (d['rank'] >= 6) {
+            newFP = 0;
+        }
 
         let data = {
             class: 'level',
@@ -483,7 +560,7 @@ let Info = {
         // so store the data and post the message from that handler (using the stored data)
         // ... but only if the rank is 5 and higher (1-5), otherwise, there is no reward
         // (and BlueprintService.newReward is not triggered)
-        if ( d['rank'] < 6 && Info.ReturnFPPoints == -1 ){
+        if (d['rank'] < 6 && Info.ReturnFPPoints == -1) {
             Info.ReturnFPMessageData = d;
             return undefined;
         }
